@@ -1,0 +1,4 @@
+# Added by run-nfs.sh only when CLIENT_CPUSET is set.
+services:
+  client:
+    cpuset: "${CLIENT_CPUSET}"

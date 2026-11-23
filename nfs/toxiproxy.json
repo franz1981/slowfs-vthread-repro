@@ -1,0 +1,1 @@
+[{"name": "nfs", "listen": "0.0.0.0:2049", "upstream": "slowfs-nfs-server:2049", "enabled": true}]

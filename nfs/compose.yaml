@@ -1,0 +1,36 @@
+# NFS mode: nfs-ganesha (user-space NFSv4 server) <- toxiproxy (adds latency) <- client (mounts through the proxy, runs Repro.java)
+name: slowfs
+services:
+  nfs-server:
+    container_name: slowfs-nfs-server
+    image: localhost/slowfs-nfs-server
+    build: { context: ., dockerfile: server.Containerfile }
+    privileged: true            # ganesha's VFS backend needs open_by_handle_at
+    tmpfs: [/export]
+    security_opt: ["label=disable"]
+  toxiproxy:
+    container_name: slowfs-toxiproxy
+    image: ghcr.io/shopify/toxiproxy:2.12.0
+    command: ["-host", "0.0.0.0", "-config", "/config/toxiproxy.json"]
+    volumes: ["./toxiproxy.json:/config/toxiproxy.json:ro"]
+    security_opt: ["label=disable"]   # SELinux: bind mounts stay unrelabeled
+  client:
+    container_name: slowfs-nfs-client
+    image: localhost/slowfs-nfs-client
+    build:
+      context: .
+      dockerfile: client.Containerfile
+      args: { JDK_IMAGE: "${JDK_IMAGE:-docker.io/library/eclipse-temurin:27-jdk}" }
+    privileged: true            # mount(2) of NFS
+    security_opt: ["label=disable"]
+    environment:
+      DELAY_MS: "${DELAY_MS:-100}"
+      PARALLELISM: "${PARALLELISM:-2}"
+      TIMEOUT: "${TIMEOUT:-60}"
+      PATHS: "${PATHS:-}"
+      MOUNT_OPTS: "${MOUNT_OPTS:-}"
+      JVM_ARGS: "${JVM_ARGS:-}"
+    volumes:
+      - "..:/repro:ro"
+      - "${JDK_DIR:-./no-jdk}:/jdk:ro"
+    command: ["/repro/nfs/client-run.sh"]
